@@ -16,13 +16,13 @@
     <header class="topbar">
         <div class="topbar-logo">
             <div class="logo-icon">📅</div>
-            <span>Room Booking</span>
+            <span>MIDDLEBY</span>
         </div>
 
         <nav class="topbar-nav">
             <a href="{{ route('admin.dashboard') }}"
                class="{{ request()->routeIs('admin.*') ? 'active' : '' }}">
-               🏢 Admin
+               🏢 Administrador
             </a>
             @foreach(App\Models\Room::all() as $r)
             <a href="{{ route('room.show', $r->slug) }}"
