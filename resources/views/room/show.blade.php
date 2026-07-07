@@ -39,123 +39,246 @@
      'color'      => $e->color,
  ])->values()) }}, '{{ $weekStart->toDateString() }}', '{{ $weekEnd->toDateString() }}')">
 
-    <!-- Room Header -->
-    <div class="room-header">
-        <div class="room-color-bar" style="background: {{ $room->color }}"></div>
-        <div class="room-header-info">
-            <div class="room-header-title">{{ $room->name }}</div>
-            <div class="room-header-sub">{{ $room->description }}</div>
-        </div>
-
-        <template x-if="isOccupiedNow()">
-            <span class="status-badge busy">
-                <span class="status-dot"></span>
-                <span x-text="'Ocupada · ' + (currentEvent() ? currentEvent().title : '')"></span>
-            </span>
-        </template>
-        <template x-if="!isOccupiedNow()">
-            <span class="status-badge free">
-                <span class="status-dot"></span>
-                Disponible
-            </span>
-        </template>
-
-        <template x-if="nextEvent() && !isOccupiedNow()">
-            <div class="room-next-event">
-                📌 Próximo: <strong x-text="nextEvent().title"></strong>
-                · <span x-text="formatTime(nextEvent().start_time)"></span>
+    <!-- ── GRID VIEW (WEEKLY GRID) ── -->
+    <div x-show="viewMode === 'grid'" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <!-- Room Header -->
+        <div class="room-header">
+            <div class="room-color-bar" style="background: {{ $room->color }}"></div>
+            <div class="room-header-info">
+                <div class="room-header-title">{{ $room->name }}</div>
+                <div class="room-header-sub">{{ $room->description }}</div>
             </div>
-        </template>
 
-        <!-- Kiosk Toggle Button -->
-        <div style="margin-left: 12px;">
-            @if(request()->has('kiosk') || request()->query('kiosk') === 'true')
-                <a href="?{{ http_build_query(request()->except('kiosk')) }}" class="btn btn-ghost" style="padding: 6px 12px; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
-                    🚪 Salir Kiosko
-                </a>
-            @else
-                <a href="?{{ http_build_query(array_merge(request()->query(), ['kiosk' => 'true'])) }}" class="btn btn-ghost" style="padding: 6px 12px; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
-                    📺 Modo Kiosko
-                </a>
-            @endif
-        </div>
-    </div>
+            <template x-if="isOccupiedNow()">
+                <span class="status-badge busy">
+                    <span class="status-dot"></span>
+                    <span x-text="'Ocupada · ' + (currentEvent() ? currentEvent().title : '')"></span>
+                </span>
+            </template>
+            <template x-if="!isOccupiedNow()">
+                <span class="status-badge free">
+                    <span class="status-dot"></span>
+                    Disponible
+                </span>
+            </template>
 
-    <!-- Calendar -->
-    <div class="calendar-wrap">
+            <template x-if="nextEvent() && !isOccupiedNow()">
+                <div class="room-next-event">
+                    📌 Próximo: <strong x-text="nextEvent().title"></strong>
+                    · <span x-text="formatTime(nextEvent().start_time)"></span>
+                </div>
+            </template>
 
-    <!-- Week navigation -->
-    <div class="flex items-center gap-2" style="padding: 12px 0 0;">
-        <div class="week-nav">
-            <a href="?week={{ $prevWeek }}" class="btn-icon">‹</a>
-            <span class="week-nav-label">
-                {{ $weekStart->translatedFormat('d M') }} – {{ $weekEnd->translatedFormat('d M Y') }}
-            </span>
-            <a href="?week={{ $nextWeek }}" class="btn-icon">›</a>
-            @if($weekStart->toDateString() !== $todayWeek)
-                <a href="?week={{ $todayWeek }}" class="btn-today">Hoy</a>
-            @endif
-        </div>
-
-        <div class="ml-auto">
-            <button class="btn btn-primary" @click="openCreate(null, null)">
-                + Nuevo Evento
-            </button>
-        </div>
-    </div>
-
-    <!-- Day Headers -->
-    <div class="calendar-header">
-        <div class="cal-header-spacer"></div>
-        @foreach($days as $day)
-        <div class="cal-day-header {{ $day->isToday() ? 'today' : '' }}">
-            <div class="day-name">{{ $day->locale('es')->isoFormat('ddd') }}</div>
-            <div class="day-number">{{ $day->format('d') }}</div>
-        </div>
-        @endforeach
-    </div>
-
-    <!-- Time Grid -->
-    <div class="calendar-body">
-        <!-- Time gutter -->
-        <div class="time-gutter">
-            @foreach($slots as $slot)
-                <div class="time-slot-label">{{ $slot->format('H:i') }}</div>
-            @endforeach
+            <!-- Kiosk Toggle Button -->
+            <div style="margin-left: 12px;">
+                @if(request()->has('kiosk') || request()->query('kiosk') === 'true')
+                    <a href="?{{ http_build_query(request()->except('kiosk')) }}" class="btn btn-ghost" style="padding: 6px 12px; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
+                        🚪 Salir Kiosko
+                    </a>
+                @else
+                    <a href="?{{ http_build_query(array_merge(request()->query(), ['kiosk' => 'true'])) }}" class="btn btn-ghost" style="padding: 6px 12px; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
+                        📺 Modo Kiosko
+                    </a>
+                @endif
+            </div>
         </div>
 
-        <!-- Days columns -->
-        <div class="days-grid">
-            @foreach($days as $dayIdx => $day)
-            <div class="day-column" style="position:relative;">
+        <!-- Calendar -->
+        <div class="calendar-wrap">
 
-                <!-- Current time line (only on today's column) -->
-                <template x-if="showNowLine && '{{ $day->toDateString() }}' === new Date().toISOString().slice(0, 10)">
-                    <div class="current-time-line" :style="`top: ${nowOffsetPct}%;`"></div>
-                </template>
+            <!-- Week navigation -->
+            <div class="flex items-center gap-2" style="padding: 12px 0 0;">
+                <div class="week-nav">
+                    <a href="?week={{ $prevWeek }}" class="btn-icon">‹</a>
+                    <span class="week-nav-label">
+                        {{ $weekStart->translatedFormat('d M') }} – {{ $weekEnd->translatedFormat('d M Y') }}
+                    </span>
+                    <a href="?week={{ $nextWeek }}" class="btn-icon">›</a>
+                    @if($weekStart->toDateString() !== $todayWeek)
+                        <a href="?week={{ $todayWeek }}" class="btn-today">Hoy</a>
+                    @endif
+                </div>
 
-                <!-- Slots -->
-                @foreach($slots as $slotIdx => $slot)
-                @php
-                    $slotDatetime = $day->copy()->setHour($slot->hour)->setMinute($slot->minute)->setSecond(0)->toIso8601String();
-                @endphp
-                <div class="day-slot"
-                     @click="openCreate('{{ $day->toDateString() }}', '{{ $slot->format("H:i") }}')">
+                <div class="ml-auto">
+                    <button class="btn btn-primary" @click="openCreate(null, null)">
+                        + Nuevo Evento
+                    </button>
+                    <button class="btn btn-secondary" @click="viewMode = 'agenda'" style="margin-left: 8px;">
+                        📋 Vista Agenda
+                    </button>
+                </div>
+            </div>
+
+            <!-- Day Headers -->
+            <div class="calendar-header">
+                <div class="cal-header-spacer"></div>
+                @foreach($days as $day)
+                <div class="cal-day-header {{ $day->isToday() ? 'today' : '' }}">
+                    <div class="day-name">{{ $day->locale('es')->isoFormat('ddd') }}</div>
+                    <div class="day-number">{{ $day->format('d') }}</div>
                 </div>
                 @endforeach
+            </div>
 
-                <!-- Event blocks -->
-                <template x-for="ev in eventsForDay('{{ $day->toDateString() }}')" :key="ev.id">
-                    <div class="event-block"
-                         :style="eventStyle(ev)"
-                         @click.stop="openEdit(ev)">
-                        <div class="event-title" x-text="ev.title"></div>
-                        <div class="event-time" x-text="formatTime(ev.start_time) + ' – ' + formatTime(ev.end_time)"></div>
+            <!-- Time Grid -->
+            <div class="calendar-body">
+                <!-- Time gutter -->
+                <div class="time-gutter">
+                    @foreach($slots as $slot)
+                        <div class="time-slot-label">{{ $slot->format('H:i') }}</div>
+                    @endforeach
+                </div>
+
+                <!-- Days columns -->
+                <div class="days-grid">
+                    @foreach($days as $dayIdx => $day)
+                    <div class="day-column" style="position:relative;">
+
+                        <!-- Current time line (only on today's column) -->
+                        <template x-if="showNowLine && '{{ $day->toDateString() }}' === new Date().toISOString().slice(0, 10)">
+                            <div class="current-time-line" :style="`top: ${nowOffsetPct}%;`"></div>
+                        </template>
+
+                        <!-- Slots -->
+                        @foreach($slots as $slotIdx => $slot)
+                        @php
+                            $slotDatetime = $day->copy()->setHour($slot->hour)->setMinute($slot->minute)->setSecond(0)->toIso8601String();
+                        @endphp
+                        <div class="day-slot"
+                             @click="openCreate('{{ $day->toDateString() }}', '{{ $slot->format("H:i") }}')">
+                        </div>
+                        @endforeach
+
+                        <!-- Event blocks -->
+                        <template x-for="ev in eventsForDay('{{ $day->toDateString() }}')" :key="ev.id">
+                            <div class="event-block"
+                                 :style="eventStyle(ev)"
+                                 @click.stop="openEdit(ev)">
+                                <div class="event-title" x-text="ev.title"></div>
+                                <div class="event-time" x-text="formatTime(ev.start_time) + ' – ' + formatTime(ev.end_time)"></div>
+                            </div>
+                        </template>
+
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── AGENDA VIEW (KIOSK AGENDA SPLIT SCREEN) ── -->
+    <div x-show="viewMode === 'agenda'" class="kiosk-agenda-container" style="display: flex; height: 100%; width: 100%;" x-cloak>
+        <!-- Left Panel (40% width): Status & Room details -->
+        <div class="kiosk-left-panel" :class="isOccupiedNow() ? 'occupied' : 'available'">
+            <div class="kiosk-room-info">
+                <span class="kiosk-room-label">SALA</span>
+                <h1 class="kiosk-room-name">{{ $room->name }}</h1>
+                <p class="kiosk-room-desc">{{ $room->description }}</p>
+            </div>
+
+            <div class="kiosk-status-card">
+                <template x-if="isOccupiedNow()">
+                    <div>
+                        <span class="kiosk-status-badge occupied">OCUPADA</span>
+                        <h2 class="kiosk-status-title" x-text="currentEvent() ? currentEvent().title : ''"></h2>
+                        <p class="kiosk-status-meta" x-text="'Organiza: ' + (currentEvent() ? currentEvent().organizer : '')"></p>
+                        <p class="kiosk-status-time" x-text="currentEvent() ? (formatTime(currentEvent().start_time) + ' - ' + formatTime(currentEvent().end_time)) : ''"></p>
                     </div>
                 </template>
-
+                <template x-if="!isOccupiedNow()">
+                    <div>
+                        <span class="kiosk-status-badge available">DISPONIBLE</span>
+                        <h2 class="kiosk-status-title">Disponible</h2>
+                        <template x-if="nextEvent()">
+                            <p class="kiosk-status-meta" x-text="'Próxima reunión: ' + nextEvent().title + ' (' + formatTime(nextEvent().start_time) + ')'"></p>
+                        </template>
+                        <template x-if="!nextEvent()">
+                            <p class="kiosk-status-meta">Libre por el resto del día</p>
+                        </template>
+                    </div>
+                </template>
             </div>
-            @endforeach
+
+            <!-- Clock & Buttons -->
+            <div class="kiosk-left-footer">
+                <div class="kiosk-clock">
+                    <span class="kiosk-clock-time" x-text="currentTime"></span>
+                    <span class="kiosk-clock-date" x-text="currentDate"></span>
+                </div>
+                
+                <div class="kiosk-actions">
+                    <button class="btn btn-primary" @click="openCreate(null, null)" style="width: 100%; justify-content: center; font-weight: 600; padding: 12px 24px; font-size: 15px; background: #ffffff; color: #000000; border: none;">
+                        ⚡ Reservar Sala
+                    </button>
+                    <div style="display: flex; gap: 8px; margin-top: 8px; width: 100%;">
+                        <button class="btn btn-secondary" @click="viewMode = 'grid'" style="flex: 1; justify-content: center; font-size: 12px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #ffffff;">
+                            📅 Vista Semanal
+                        </button>
+                        @if(request()->has('kiosk') || request()->query('kiosk') === 'true')
+                            <a href="?{{ http_build_query(request()->except('kiosk')) }}" class="btn btn-ghost" style="flex: 1; justify-content: center; font-size: 12px; border: 1px solid rgba(255,255,255,0.25); color: #ffffff; background: rgba(255,255,255,0.05);">
+                                🚪 Salir
+                            </a>
+                        @else
+                            <button class="btn btn-ghost" @click="viewMode = 'grid'" style="flex: 1; justify-content: center; font-size: 12px; border: 1px solid rgba(255,255,255,0.25); color: #ffffff; background: rgba(255,255,255,0.05);">
+                                Volver
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel (60% width): Today's Schedule -->
+        <div class="kiosk-right-panel">
+            <div class="kiosk-agenda-header">
+                <h3>Agenda de Hoy</h3>
+                <span class="kiosk-agenda-today" x-text="currentDate"></span>
+            </div>
+            
+            <div class="kiosk-timeline">
+                <!-- Fetch events for today -->
+                @php
+                    $todayStr = \Carbon\Carbon::today()->toDateString();
+                @endphp
+                
+                <div class="kiosk-events-list">
+                    <template x-if="eventsForDay('{{ $todayStr }}').length === 0">
+                        <div class="kiosk-no-events">
+                            <div class="kiosk-no-events-icon">🎉</div>
+                            <h4>Sala libre todo el día</h4>
+                            <p>No hay reuniones programadas para hoy.</p>
+                        </div>
+                    </template>
+                    
+                    <template x-if="eventsForDay('{{ $todayStr }}').length > 0">
+                        <div class="timeline-wrapper">
+                            <template x-for="(ev, idx) in eventsForDay('{{ $todayStr }}')" :key="ev.id">
+                                <div class="timeline-item" :class="isCurrentEvent(ev) ? 'active' : ''" @click="openEdit(ev)">
+                                    <div class="timeline-badge" :style="`background: ${ev.color || roomColor}`">
+                                        <div class="timeline-badge-inner" x-show="isCurrentEvent(ev)"></div>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-time-col">
+                                            <span class="time-range" x-text="formatTime(ev.start_time) + ' - ' + formatTime(ev.end_time)"></span>
+                                            <span class="duration" x-text="getDurationMinutes(ev.start_time, ev.end_time) + ' min'"></span>
+                                        </div>
+                                        <div class="timeline-details-col">
+                                            <h4 class="event-title" x-text="ev.title"></h4>
+                                            <p class="event-meta">
+                                                <span class="organizer" x-text="'Organiza: ' + (ev.organizer || 'N/A')"></span>
+                                            </p>
+                                            <p class="event-desc" x-show="ev.description" x-text="ev.description"></p>
+                                        </div>
+                                        <div class="timeline-status-col">
+                                            <span class="now-badge" x-show="isCurrentEvent(ev)">AHORA</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -185,11 +308,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Hora inicio</label>
-                        <input class="form-input" type="time" x-model="form.start_time" min="08:30" max="17:00" step="1800" />
+                        <input class="form-input" type="time" x-model="form.start_time" min="08:00" max="17:30" step="1800" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">Hora fin</label>
-                        <input class="form-input" type="time" x-model="form.end_time" min="09:00" max="17:30" step="1800" />
+                        <input class="form-input" type="time" x-model="form.end_time" min="08:30" max="18:00" step="1800" />
                     </div>
                 </div>
                 <div class="form-row">
@@ -247,13 +370,38 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         form: { title:'', organizer:'', date:'', start_time:'08:00', end_time:'09:00', recurrence:'', recurrence_end:'', description:'' },
         nowOffsetPct: 0,
         showNowLine: false,
+        viewMode: (new URLSearchParams(window.location.search).get('kiosk') === 'true') ? 'agenda' : 'grid',
+        currentTime: '',
+        currentDate: '',
 
         init() {
             this.updateNowLine();
+            this.tick();
+            // Update clock every second
+            setInterval(() => this.tick(), 1000);
             // Update current time line every minute
             setInterval(() => this.updateNowLine(), 60000);
             // Start polling every 30 seconds
             setInterval(() => this.fetchEvents(), 30000);
+        },
+
+        tick() {
+            const now = new Date();
+            this.currentTime = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+            this.currentDate = now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+        },
+
+        isCurrentEvent(ev) {
+            const now = new Date();
+            const start = new Date(ev.start_time);
+            const end = new Date(ev.end_time);
+            return start <= now && end >= now;
+        },
+
+        getDurationMinutes(startStr, endStr) {
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            return Math.round((end - start) / 60000);
         },
 
         updateNowLine() {

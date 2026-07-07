@@ -713,6 +713,352 @@ input, textarea, select { font-family: inherit; }
 
 .app-shell.kiosk-mode .content {
   height: 100vh;
+  padding: 0 !important;
+}
+
+/* ── Kiosk Agenda View ───────────────────────────────────── */
+.kiosk-agenda-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.kiosk-left-panel {
+  width: 40%;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: all 0.4s ease;
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.kiosk-left-panel.available {
+  background: linear-gradient(135deg, #064e3b, #10b981);
+}
+
+.kiosk-left-panel.occupied {
+  background: linear-gradient(135deg, #7f1d1d, #ef4444);
+}
+
+.kiosk-room-info {
+  margin-bottom: 24px;
+}
+
+.kiosk-room-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.kiosk-room-name {
+  font-size: 42px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  letter-spacing: -0.5px;
+}
+
+.kiosk-room-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+}
+
+.kiosk-status-card {
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: auto;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+.kiosk-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+.kiosk-status-badge.available {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.kiosk-status-badge.occupied {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.kiosk-status-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 8px;
+  line-height: 1.25;
+}
+
+.kiosk-status-meta {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 4px;
+}
+
+.kiosk-status-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 8px;
+}
+
+.kiosk-left-footer {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kiosk-clock {
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.kiosk-clock-time {
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.kiosk-clock-date {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 6px;
+}
+
+.kiosk-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Right panel style */
+.kiosk-right-panel {
+  width: 60%;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  background: #09090b;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.kiosk-agenda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.kiosk-agenda-header h3 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.kiosk-agenda-today {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+
+.kiosk-timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.kiosk-events-list {
+  height: 100%;
+}
+
+.kiosk-no-events {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70%;
+  color: var(--text-dim);
+}
+
+.kiosk-no-events-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.kiosk-no-events h4 {
+  font-size: 20px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.kiosk-no-events p {
+  font-size: 14px;
+}
+
+.timeline-wrapper {
+  position: relative;
+  padding-left: 28px;
+  border-left: 2px solid var(--border);
+  margin-left: 12px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 28px;
+  cursor: pointer;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 8px;
+}
+
+.timeline-badge {
+  position: absolute;
+  left: -36px;
+  top: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #09090b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.timeline-item:hover .timeline-badge {
+  transform: scale(1.35);
+}
+
+.timeline-badge-inner {
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  50% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.7; }
+}
+
+.timeline-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.timeline-item.active .timeline-content {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.05);
+}
+
+.timeline-content:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border-hover);
+}
+
+.timeline-time-col {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-time-col .time-range {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.timeline-time-col .duration {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.timeline-details-col {
+  flex: 1;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.timeline-details-col .event-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.timeline-details-col .event-meta {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.timeline-details-col .event-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.timeline-status-col {
+  width: 80px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.now-badge {
+  background: #ffffff;
+  color: #000000;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 .app-shell.kiosk-mode .calendar-wrap {
