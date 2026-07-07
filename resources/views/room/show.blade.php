@@ -62,6 +62,12 @@
             </div>
 
             <div style="margin-left: 16px; display: flex; gap: 8px;">
+                @if(!request()->has('kiosk') && request()->query('kiosk') !== 'true')
+                    <button class="btn btn-ghost" @click="toggleTheme()" style="padding: 6px 12px; font-size:12px; display: inline-flex; align-items: center; gap: 6px;">
+                        <span x-show="theme === 'dark'">☀️ Claro</span>
+                        <span x-show="theme === 'light'">🌙 Oscuro</span>
+                    </button>
+                @endif
                 <button class="btn btn-primary" @click="openCreate(null, null)">
                     + Nuevo Evento
                 </button>
@@ -221,13 +227,29 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         form: { title:'', organizer:'', date:'', start_time:'08:00', end_time:'09:00', recurrence:'', recurrence_end:'', description:'' },
         nowOffsetPct: 0,
         showNowLine: false,
+        theme: localStorage.getItem('room-theme') || 'dark',
 
         init() {
+            this.applyTheme();
             this.updateNowLine();
             // Update current time line every minute
             setInterval(() => this.updateNowLine(), 60000);
             // Start polling every 30 seconds
             setInterval(() => this.fetchEvents(), 30000);
+        },
+
+        toggleTheme() {
+            this.theme = this.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('room-theme', this.theme);
+            this.applyTheme();
+        },
+
+        applyTheme() {
+            if (this.theme === 'light') {
+                document.documentElement.classList.add('light-theme');
+            } else {
+                document.documentElement.classList.remove('light-theme');
+            }
         },
 
         updateNowLine() {
@@ -396,7 +418,7 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
             const width = ev.widthPct !== undefined ? `width: calc(${ev.widthPct}% - 6px);` : 'width: calc(100% - 6px);';
             const left = ev.leftPct !== undefined ? `left: calc(${ev.leftPct}% + 3px);` : 'left: 3px;';
             
-            return `top:${topPct}%; height:${heightPct}%; background:${color}22; border-color:${color}; color:${color}; right:auto; ${width} ${left}`;
+            return `top:${topPct}%; height:${heightPct}%; background:${color}; border-color:rgba(0,0,0,0.18); color:#ffffff; right:auto; ${width} ${left}`;
         },
 
         formatTime(iso) {
