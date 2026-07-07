@@ -32,15 +32,15 @@
      'title'      => $e->title,
      'organizer'  => $e->organizer,
      'description'=> $e->description,
-     'start_time' => $e->start_time->toIso8601String(),
-     'end_time'   => $e->end_time->toIso8601String(),
+     'start_time' => $e->start_time->format('Y-m-d\TH:i:s'),
+     'end_time'   => $e->end_time->format('Y-m-d\TH:i:s'),
      'recurrence' => $e->recurrence,
      'recurrence_end' => $e->recurrence_end?->toDateString(),
      'color'      => $e->color,
- ])->values()) }}, '{{ $weekStart->toDateString() }}', '{{ $weekEnd->toDateString() }}')">
+ ])->values()) }}, '{{ $weekStart->toDateString() }}', '{{ $weekEnd->toDateString() }}')" class="room-booking-container">
 
-    <!-- ── GRID VIEW (WEEKLY GRID) ── -->
-    <div x-show="viewMode === 'grid'" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+    <!-- ── SIMPLIFIED CALENDAR GRID (100% SCREEN SIZE) ── -->
+    <div class="calendar-container-100">
         <!-- Room Header -->
         <div class="room-header">
             <div class="room-color-bar" style="background: {{ $room->color }}"></div>
@@ -49,28 +49,22 @@
                 <div class="room-header-sub">{{ $room->description }}</div>
             </div>
 
-            <template x-if="isOccupiedNow()">
-                <span class="status-badge busy">
-                    <span class="status-dot"></span>
-                    <span x-text="'Ocupada · ' + (currentEvent() ? currentEvent().title : '')"></span>
+            <!-- Week navigation -->
+            <div class="week-nav" style="margin-left: auto;">
+                <a href="?week={{ $prevWeek }}" class="btn-icon">‹</a>
+                <span class="week-nav-label">
+                    {{ $weekStart->translatedFormat('d M') }} – {{ $weekEnd->translatedFormat('d M Y') }}
                 </span>
-            </template>
-            <template x-if="!isOccupiedNow()">
-                <span class="status-badge free">
-                    <span class="status-dot"></span>
-                    Disponible
-                </span>
-            </template>
+                <a href="?week={{ $nextWeek }}" class="btn-icon">›</a>
+                @if($weekStart->toDateString() !== $todayWeek)
+                    <a href="?week={{ $todayWeek }}" class="btn-today">Hoy</a>
+                @endif
+            </div>
 
-            <template x-if="nextEvent() && !isOccupiedNow()">
-                <div class="room-next-event">
-                    📌 Próximo: <strong x-text="nextEvent().title"></strong>
-                    · <span x-text="formatTime(nextEvent().start_time)"></span>
-                </div>
-            </template>
-
-            <!-- Kiosk Toggle Button -->
-            <div style="margin-left: 12px;">
+            <div style="margin-left: 16px; display: flex; gap: 8px;">
+                <button class="btn btn-primary" @click="openCreate(null, null)">
+                    + Nuevo Evento
+                </button>
                 @if(request()->has('kiosk') || request()->query('kiosk') === 'true')
                     <a href="?{{ http_build_query(request()->except('kiosk')) }}" class="btn btn-ghost" style="padding: 6px 12px; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
                         🚪 Salir Kiosko
@@ -83,201 +77,58 @@
             </div>
         </div>
 
-        <!-- Calendar -->
-        <div class="calendar-wrap">
-
-            <!-- Week navigation -->
-            <div class="flex items-center gap-2" style="padding: 12px 0 0;">
-                <div class="week-nav">
-                    <a href="?week={{ $prevWeek }}" class="btn-icon">‹</a>
-                    <span class="week-nav-label">
-                        {{ $weekStart->translatedFormat('d M') }} – {{ $weekEnd->translatedFormat('d M Y') }}
-                    </span>
-                    <a href="?week={{ $nextWeek }}" class="btn-icon">›</a>
-                    @if($weekStart->toDateString() !== $todayWeek)
-                        <a href="?week={{ $todayWeek }}" class="btn-today">Hoy</a>
-                    @endif
-                </div>
-
-                <div class="ml-auto">
-                    <button class="btn btn-primary" @click="openCreate(null, null)">
-                        + Nuevo Evento
-                    </button>
-                    <button class="btn btn-secondary" @click="viewMode = 'agenda'" style="margin-left: 8px;">
-                        📋 Vista Agenda
-                    </button>
-                </div>
+        <!-- Day Headers -->
+        <div class="calendar-header">
+            <div class="cal-header-spacer"></div>
+            @foreach($days as $day)
+            <div class="cal-day-header {{ $day->isToday() ? 'today' : '' }}">
+                <div class="day-name">{{ $day->locale('es')->isoFormat('ddd') }}</div>
+                <div class="day-number">{{ $day->format('d') }}</div>
             </div>
+            @endforeach
+        </div>
 
-            <!-- Day Headers -->
-            <div class="calendar-header">
-                <div class="cal-header-spacer"></div>
-                @foreach($days as $day)
-                <div class="cal-day-header {{ $day->isToday() ? 'today' : '' }}">
-                    <div class="day-name">{{ $day->locale('es')->isoFormat('ddd') }}</div>
-                    <div class="day-number">{{ $day->format('d') }}</div>
-                </div>
+        <!-- Time Grid -->
+        <div class="calendar-body">
+            <!-- Time gutter -->
+            <div class="time-gutter">
+                @foreach($slots as $slot)
+                    <div class="time-slot-label">{{ $slot->format('H:i') }}</div>
                 @endforeach
             </div>
 
-            <!-- Time Grid -->
-            <div class="calendar-body">
-                <!-- Time gutter -->
-                <div class="time-gutter">
-                    @foreach($slots as $slot)
-                        <div class="time-slot-label">{{ $slot->format('H:i') }}</div>
-                    @endforeach
-                </div>
+            <!-- Days columns -->
+            <div class="days-grid">
+                @foreach($days as $dayIdx => $day)
+                <div class="day-column" style="position:relative;">
 
-                <!-- Days columns -->
-                <div class="days-grid">
-                    @foreach($days as $dayIdx => $day)
-                    <div class="day-column" style="position:relative;">
+                    <!-- Current time line (only on today's column) -->
+                    <template x-if="showNowLine && '{{ $day->toDateString() }}' === new Date().toISOString().slice(0, 10)">
+                        <div class="current-time-line" :style="`top: ${nowOffsetPct}%;`"></div>
+                    </template>
 
-                        <!-- Current time line (only on today's column) -->
-                        <template x-if="showNowLine && '{{ $day->toDateString() }}' === new Date().toISOString().slice(0, 10)">
-                            <div class="current-time-line" :style="`top: ${nowOffsetPct}%;`"></div>
-                        </template>
-
-                        <!-- Slots -->
-                        @foreach($slots as $slotIdx => $slot)
-                        @php
-                            $slotDatetime = $day->copy()->setHour($slot->hour)->setMinute($slot->minute)->setSecond(0)->toIso8601String();
-                        @endphp
-                        <div class="day-slot"
-                             @click="openCreate('{{ $day->toDateString() }}', '{{ $slot->format("H:i") }}')">
-                        </div>
-                        @endforeach
-
-                        <!-- Event blocks -->
-                        <template x-for="ev in eventsForDay('{{ $day->toDateString() }}')" :key="ev.id">
-                            <div class="event-block"
-                                 :style="eventStyle(ev)"
-                                 @click.stop="openEdit(ev)">
-                                <div class="event-title" x-text="ev.title"></div>
-                                <div class="event-time" x-text="formatTime(ev.start_time) + ' – ' + formatTime(ev.end_time)"></div>
-                            </div>
-                        </template>
-
+                    <!-- Slots -->
+                    @foreach($slots as $slotIdx => $slot)
+                    @php
+                        $slotDatetime = $day->copy()->setHour($slot->hour)->setMinute($slot->minute)->setSecond(0)->toIso8601String();
+                    @endphp
+                    <div class="day-slot"
+                         @click="openCreate('{{ $day->toDateString() }}', '{{ $slot->format("H:i") }}')">
                     </div>
                     @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- ── AGENDA VIEW (KIOSK AGENDA SPLIT SCREEN) ── -->
-    <div x-show="viewMode === 'agenda'" class="kiosk-agenda-container" style="display: flex; height: 100%; width: 100%;" x-cloak>
-        <!-- Left Panel (40% width): Status & Room details -->
-        <div class="kiosk-left-panel" :class="isOccupiedNow() ? 'occupied' : 'available'">
-            <div class="kiosk-room-info">
-                <span class="kiosk-room-label">SALA</span>
-                <h1 class="kiosk-room-name">{{ $room->name }}</h1>
-                <p class="kiosk-room-desc">{{ $room->description }}</p>
-            </div>
-
-            <div class="kiosk-status-card">
-                <template x-if="isOccupiedNow()">
-                    <div>
-                        <span class="kiosk-status-badge occupied">OCUPADA</span>
-                        <h2 class="kiosk-status-title" x-text="currentEvent() ? currentEvent().title : ''"></h2>
-                        <p class="kiosk-status-meta" x-text="'Organiza: ' + (currentEvent() ? currentEvent().organizer : '')"></p>
-                        <p class="kiosk-status-time" x-text="currentEvent() ? (formatTime(currentEvent().start_time) + ' - ' + formatTime(currentEvent().end_time)) : ''"></p>
-                    </div>
-                </template>
-                <template x-if="!isOccupiedNow()">
-                    <div>
-                        <span class="kiosk-status-badge available">DISPONIBLE</span>
-                        <h2 class="kiosk-status-title">Disponible</h2>
-                        <template x-if="nextEvent()">
-                            <p class="kiosk-status-meta" x-text="'Próxima reunión: ' + nextEvent().title + ' (' + formatTime(nextEvent().start_time) + ')'"></p>
-                        </template>
-                        <template x-if="!nextEvent()">
-                            <p class="kiosk-status-meta">Libre por el resto del día</p>
-                        </template>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Clock & Buttons -->
-            <div class="kiosk-left-footer">
-                <div class="kiosk-clock">
-                    <span class="kiosk-clock-time" x-text="currentTime"></span>
-                    <span class="kiosk-clock-date" x-text="currentDate"></span>
-                </div>
-                
-                <div class="kiosk-actions">
-                    <button class="btn btn-primary" @click="openCreate(null, null)" style="width: 100%; justify-content: center; font-weight: 600; padding: 12px 24px; font-size: 15px; background: #ffffff; color: #000000; border: none;">
-                        ⚡ Reservar Sala
-                    </button>
-                    <div style="display: flex; gap: 8px; margin-top: 8px; width: 100%;">
-                        <button class="btn btn-secondary" @click="viewMode = 'grid'" style="flex: 1; justify-content: center; font-size: 12px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #ffffff;">
-                            📅 Vista Semanal
-                        </button>
-                        @if(request()->has('kiosk') || request()->query('kiosk') === 'true')
-                            <a href="?{{ http_build_query(request()->except('kiosk')) }}" class="btn btn-ghost" style="flex: 1; justify-content: center; font-size: 12px; border: 1px solid rgba(255,255,255,0.25); color: #ffffff; background: rgba(255,255,255,0.05);">
-                                🚪 Salir
-                            </a>
-                        @else
-                            <button class="btn btn-ghost" @click="viewMode = 'grid'" style="flex: 1; justify-content: center; font-size: 12px; border: 1px solid rgba(255,255,255,0.25); color: #ffffff; background: rgba(255,255,255,0.05);">
-                                Volver
-                            </button>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Panel (60% width): Today's Schedule -->
-        <div class="kiosk-right-panel">
-            <div class="kiosk-agenda-header">
-                <h3>Agenda de Hoy</h3>
-                <span class="kiosk-agenda-today" x-text="currentDate"></span>
-            </div>
-            
-            <div class="kiosk-timeline">
-                <!-- Fetch events for today -->
-                @php
-                    $todayStr = \Carbon\Carbon::today()->toDateString();
-                @endphp
-                
-                <div class="kiosk-events-list">
-                    <template x-if="eventsForDay('{{ $todayStr }}').length === 0">
-                        <div class="kiosk-no-events">
-                            <div class="kiosk-no-events-icon">🎉</div>
-                            <h4>Sala libre todo el día</h4>
-                            <p>No hay reuniones programadas para hoy.</p>
+                    <!-- Event blocks -->
+                    <template x-for="ev in eventsForDay('{{ $day->toDateString() }}')" :key="ev.id">
+                        <div class="event-block"
+                             :style="eventStyle(ev)"
+                             @click.stop="openEdit(ev)">
+                            <div class="event-title" x-text="ev.title"></div>
+                            <div class="event-time" x-text="formatTime(ev.start_time) + ' – ' + formatTime(ev.end_time)"></div>
                         </div>
                     </template>
-                    
-                    <template x-if="eventsForDay('{{ $todayStr }}').length > 0">
-                        <div class="timeline-wrapper">
-                            <template x-for="(ev, idx) in eventsForDay('{{ $todayStr }}')" :key="ev.id">
-                                <div class="timeline-item" :class="isCurrentEvent(ev) ? 'active' : ''" @click="openEdit(ev)">
-                                    <div class="timeline-badge" :style="`background: ${ev.color || roomColor}`">
-                                        <div class="timeline-badge-inner" x-show="isCurrentEvent(ev)"></div>
-                                    </div>
-                                    <div class="timeline-content">
-                                        <div class="timeline-time-col">
-                                            <span class="time-range" x-text="formatTime(ev.start_time) + ' - ' + formatTime(ev.end_time)"></span>
-                                            <span class="duration" x-text="getDurationMinutes(ev.start_time, ev.end_time) + ' min'"></span>
-                                        </div>
-                                        <div class="timeline-details-col">
-                                            <h4 class="event-title" x-text="ev.title"></h4>
-                                            <p class="event-meta">
-                                                <span class="organizer" x-text="'Organiza: ' + (ev.organizer || 'N/A')"></span>
-                                            </p>
-                                            <p class="event-desc" x-show="ev.description" x-text="ev.description"></p>
-                                        </div>
-                                        <div class="timeline-status-col">
-                                            <span class="now-badge" x-show="isCurrentEvent(ev)">AHORA</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
+
                 </div>
+                @endforeach
             </div>
         </div>
     </div>
@@ -370,38 +221,13 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         form: { title:'', organizer:'', date:'', start_time:'08:00', end_time:'09:00', recurrence:'', recurrence_end:'', description:'' },
         nowOffsetPct: 0,
         showNowLine: false,
-        viewMode: (new URLSearchParams(window.location.search).get('kiosk') === 'true') ? 'agenda' : 'grid',
-        currentTime: '',
-        currentDate: '',
 
         init() {
             this.updateNowLine();
-            this.tick();
-            // Update clock every second
-            setInterval(() => this.tick(), 1000);
             // Update current time line every minute
             setInterval(() => this.updateNowLine(), 60000);
             // Start polling every 30 seconds
             setInterval(() => this.fetchEvents(), 30000);
-        },
-
-        tick() {
-            const now = new Date();
-            this.currentTime = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-            this.currentDate = now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-        },
-
-        isCurrentEvent(ev) {
-            const now = new Date();
-            const start = new Date(ev.start_time);
-            const end = new Date(ev.end_time);
-            return start <= now && end >= now;
-        },
-
-        getDurationMinutes(startStr, endStr) {
-            const start = new Date(startStr);
-            const end = new Date(endStr);
-            return Math.round((end - start) / 60000);
         },
 
         updateNowLine() {
@@ -430,11 +256,20 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         },
 
         // ── Room State Helpers ────────────────────────────────────────
+        parseLocalDate(dateStr) {
+            if (!dateStr) return new Date();
+            const cleaned = dateStr.replace('T', ' ').slice(0, 19);
+            const parts = cleaned.split(' ');
+            const dateParts = parts[0].split('-').map(Number);
+            const timeParts = parts[1].split(':').map(Number);
+            return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1], timeParts[2] || 0);
+        },
+
         isOccupiedNow() {
             const now = new Date();
             return this.events.some(ev => {
-                const start = new Date(ev.start_time);
-                const end = new Date(ev.end_time);
+                const start = this.parseLocalDate(ev.start_time);
+                const end = this.parseLocalDate(ev.end_time);
                 return start <= now && end >= now;
             });
         },
@@ -442,17 +277,17 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         currentEvent() {
             const now = new Date();
             return this.events.find(ev => {
-                const start = new Date(ev.start_time);
-                const end = new Date(ev.end_time);
+                const start = this.parseLocalDate(ev.start_time);
+                const end = this.parseLocalDate(ev.end_time);
                 return start <= now && end >= now;
             });
         },
 
         nextEvent() {
             const now = new Date();
-            const futureEvents = this.events.filter(ev => new Date(ev.start_time) > now);
+            const futureEvents = this.events.filter(ev => this.parseLocalDate(ev.start_time) > now);
             if (futureEvents.length === 0) return null;
-            futureEvents.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+            futureEvents.sort((a, b) => this.parseLocalDate(a.start_time) - this.parseLocalDate(b.start_time));
             return futureEvents[0];
         },
 
@@ -464,20 +299,20 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         computeEventLayouts(dayEvents) {
             if (!dayEvents || dayEvents.length === 0) return [];
             const sorted = [...dayEvents].sort((a, b) => {
-                const aStart = new Date(a.start_time).getTime();
-                const bStart = new Date(b.start_time).getTime();
+                const aStart = this.parseLocalDate(a.start_time).getTime();
+                const bStart = this.parseLocalDate(b.start_time).getTime();
                 if (aStart !== bStart) return aStart - bStart;
-                return new Date(a.end_time).getTime() - new Date(b.end_time).getTime();
+                return this.parseLocalDate(a.end_time).getTime() - this.parseLocalDate(b.end_time).getTime();
             });
 
             const columns = [];
             sorted.forEach(event => {
                 let placed = false;
-                const evStart = new Date(event.start_time).getTime();
+                const evStart = this.parseLocalDate(event.start_time).getTime();
                 for (let i = 0; i < columns.length; i++) {
                     const col = columns[i];
                     const lastEventInCol = col[col.length - 1];
-                    const lastEnd = new Date(lastEventInCol.end_time).getTime();
+                    const lastEnd = this.parseLocalDate(lastEventInCol.end_time).getTime();
                     if (evStart >= lastEnd) {
                         col.push(event);
                         placed = true;
@@ -499,10 +334,10 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
                 let addedToGroup = false;
                 for (let group of groups) {
                     const overlaps = group.some(ge => {
-                        const s1 = new Date(event.start_time).getTime();
-                        const e1 = new Date(event.end_time).getTime();
-                        const s2 = new Date(ge.start_time).getTime();
-                        const e2 = new Date(ge.end_time).getTime();
+                        const s1 = this.parseLocalDate(event.start_time).getTime();
+                        const e1 = this.parseLocalDate(event.end_time).getTime();
+                        const s2 = this.parseLocalDate(ge.start_time).getTime();
+                        const e2 = this.parseLocalDate(ge.end_time).getTime();
                         return s1 < e2 && e1 > s2;
                     });
                     if (overlaps) {
@@ -536,15 +371,14 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
 
         eventsForDay(dateStr) {
             const dayEvents = this.events.filter(ev => {
-                const d = new Date(ev.start_time);
-                return d.toISOString().slice(0,10) === dateStr;
+                return ev.start_time.slice(0, 10) === dateStr;
             });
             return this.computeEventLayouts(dayEvents);
         },
 
         eventStyle(ev) {
-            const start = new Date(ev.start_time);
-            const end   = new Date(ev.end_time);
+            const start = this.parseLocalDate(ev.start_time);
+            const end   = this.parseLocalDate(ev.end_time);
             const startMin = start.getHours() * 60 + start.getMinutes();
             const endMin   = end.getHours()   * 60 + end.getMinutes();
             
@@ -566,7 +400,7 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         },
 
         formatTime(iso) {
-            const d = new Date(iso);
+            const d = this.parseLocalDate(iso);
             return d.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', hour12: false });
         },
 
@@ -593,12 +427,12 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
             this.editingId = ev.id;
             this.errorMsg  = '';
             this.isConflict = false;
-            const start = new Date(ev.start_time);
-            const end   = new Date(ev.end_time);
+            const start = this.parseLocalDate(ev.start_time);
+            const end   = this.parseLocalDate(ev.end_time);
             this.form = {
                 title: ev.title,
                 organizer: ev.organizer || '',
-                date: start.toISOString().slice(0,10),
+                date: start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0'),
                 start_time: `${String(start.getHours()).padStart(2,'0')}:${String(start.getMinutes()).padStart(2,'0')}`,
                 end_time:   `${String(end.getHours()).padStart(2,'0')}:${String(end.getMinutes()).padStart(2,'0')}`,
                 recurrence: ev.recurrence || '',
