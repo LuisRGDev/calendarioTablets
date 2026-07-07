@@ -14,7 +14,7 @@ class AdminController extends Controller
             ? Carbon::parse($request->query('week'))->startOfWeek(Carbon::MONDAY)
             : Carbon::now()->startOfWeek(Carbon::MONDAY);
 
-        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $weekEnd = $weekStart->copy()->addDays(4)->endOfDay();
 
         $rooms = Room::with(['events' => function ($q) use ($weekStart, $weekEnd) {
             $q->where(function ($inner) use ($weekStart, $weekEnd) {
@@ -36,7 +36,7 @@ class AdminController extends Controller
         }
 
         $days = [];
-        for ($i = 0; $i < 7; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             $days[] = $weekStart->copy()->addDays($i);
         }
 

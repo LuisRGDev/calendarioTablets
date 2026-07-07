@@ -4,12 +4,12 @@
 
 @section('content')
 @php
-    $startHour = 8; $startMin = 30;
-    $endHour = 17;  $endMin = 30;
+    $startHour = 8; $startMin = 0;
+    $endHour = 17;  $endMin = 0;
     $slots = [];
     $t = \Carbon\Carbon::today()->setHour($startHour)->setMinute($startMin)->setSecond(0);
     $end = \Carbon\Carbon::today()->setHour($endHour)->setMinute($endMin)->setSecond(0);
-    while ($t->lte($end)) { $slots[] = $t->copy(); $t->addMinutes(30); }
+    while ($t->lte($end)) { $slots[] = $t->copy(); $t->addHours(1); }
 
     $prevWeek = $weekStart->copy()->subWeek()->toDateString();
     $nextWeek = $weekStart->copy()->addWeek()->toDateString();
@@ -80,7 +80,7 @@
             <div class="mini-cal">
                 <!-- Day names header -->
                 <div class="mini-cal-header">
-                    @foreach(['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as $d)
+                    @foreach(['Lun','Mar','Mié','Jue','Vie'] as $d)
                     <div class="mini-cal-day-name">{{ $d }}</div>
                     @endforeach
                 </div>
@@ -215,7 +215,7 @@ function adminApp(rooms, weekStartStr, weekEndStr) {
         saving: false,
         errorMsg: '',
         isConflict: false,
-        form: { room_id:'', title:'', organizer:'', date:'', start_time:'08:30', end_time:'09:30', recurrence:'', recurrence_end:'', description:'' },
+        form: { room_id:'', title:'', organizer:'', date:'', start_time:'08:00', end_time:'09:00', recurrence:'', recurrence_end:'', description:'' },
 
         init() {
             // Polling every 30 seconds
@@ -236,7 +236,7 @@ function adminApp(rooms, weekStartStr, weekEndStr) {
             }
         },
 
-        startMinutes() { return 8 * 60 + 30; },
+        startMinutes() { return 8 * 60; },
         slotHeight()   { return 30; },
 
         isOccupied(room) {
@@ -332,22 +332,30 @@ function adminApp(rooms, weekStartStr, weekEndStr) {
             const start = new Date(ev.start_time), end = new Date(ev.end_time);
             const startMin = start.getHours() * 60 + start.getMinutes();
             const endMin   = end.getHours()   * 60 + end.getMinutes();
-            const topPx    = (startMin - this.startMinutes()) * (this.slotHeight() / 30);
-            const heightPx = Math.max((endMin - startMin) * (this.slotHeight() / 30), 14);
+            
+            const startLimit = this.startMinutes();
+            const endLimit   = 18 * 60; // 6:00 PM
+            const totalMins  = endLimit - startLimit;
+            
+            const offsetMin = Math.max(startMin - startLimit, 0);
+            const duration  = Math.min(endMin - startMin, totalMins - offsetMin);
+            
+            const topPct    = (offsetMin / totalMins) * 100;
+            const heightPct = Math.max((duration / totalMins) * 100, 5);
             const color    = ev.color || room.color;
             
             const width = ev.widthPct !== undefined ? `width: calc(${ev.widthPct}% - 2px);` : 'width: calc(100% - 2px);';
             const left = ev.leftPct !== undefined ? `left: calc(${ev.leftPct}% + 1px);` : 'left: 1px;';
             
-            return `top:${topPx}px; height:${heightPx}px; background:${color}25; border-color:${color}; color:${color}; right:auto; ${width} ${left}`;
+            return `top:${topPct}%; height:${heightPct}%; background:${color}25; border-color:${color}; color:${color}; right:auto; ${width} ${left}`;
         },
 
         openAdminCreate(room, dateStr, timeStr) {
             this.editingId = null; this.errorMsg = ''; this.isConflict = false;
             this.activeRoomId = room.id;
             const [h, m] = timeStr.split(':').map(Number);
-            const endH = h + Math.floor((m + 60) / 60);
-            const endM = (m + 60) % 60;
+            const endH = h + 1;
+            const endM = m;
             this.form = {
                 room_id: room.id, title:'', organizer:'', date: dateStr,
                 start_time: timeStr,

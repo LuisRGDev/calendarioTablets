@@ -4,30 +4,21 @@
 
 @section('content')
 @php
-    // Build time slots: 8:30 to 17:30 in 30-min increments
+    // Build time slots: 8:00 to 17:00 in 1-hour increments (representing 8:00-18:00)
     $slots = [];
-    $startHour = 8; $startMin = 30;
-    $endHour = 17;  $endMin = 30;
+    $startHour = 8; $startMin = 0;
+    $endHour = 17;  $endMin = 0;
     $t = \Carbon\Carbon::today()->setHour($startHour)->setMinute($startMin)->setSecond(0);
     $end = \Carbon\Carbon::today()->setHour($endHour)->setMinute($endMin)->setSecond(0);
     while ($t->lte($end)) {
         $slots[] = $t->copy();
-        $t->addMinutes(30);
+        $t->addHours(1);
     }
-    $totalMinutes = ($endHour * 60 + $endMin) - ($startHour * 60 + $startMin); // 540 min
-    $slotHeight = 60; // px per 30 min => 120px/hr
 
     // Current status
     $isOccupied = $room->isOccupiedNow();
     $currentEvent = $room->currentEvent();
     $nextEvent = $room->nextEvent();
-
-    // Current time position
-    $now = now();
-    $nowMin = $now->hour * 60 + $now->minute;
-    $startTotalMin = $startHour * 60 + $startMin;
-    $nowOffset = ($nowMin - $startTotalMin) * ($slotHeight / 30);
-    $showNowLine = $nowMin >= $startTotalMin && $nowMin <= ($endHour * 60 + $endMin);
 
     // Week prev/next
     $prevWeek = $weekStart->copy()->subWeek()->toDateString();
@@ -139,9 +130,9 @@
             <div class="day-column" style="position:relative;">
 
                 <!-- Current time line (only on today's column) -->
-                @if($day->isToday() && $showNowLine)
-                <div class="current-time-line" style="top: {{ $nowOffset }}px;"></div>
-                @endif
+                <template x-if="showNowLine && '{{ $day->toDateString() }}' === new Date().toISOString().slice(0, 10)">
+                    <div class="current-time-line" :style="`top: ${nowOffsetPct}%;`"></div>
+                </template>
 
                 <!-- Slots -->
                 @foreach($slots as $slotIdx => $slot)
@@ -253,11 +244,30 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         saving: false,
         errorMsg: '',
         isConflict: false,
-        form: { title:'', organizer:'', date:'', start_time:'08:30', end_time:'09:00', recurrence:'', recurrence_end:'', description:'' },
+        form: { title:'', organizer:'', date:'', start_time:'08:00', end_time:'09:00', recurrence:'', recurrence_end:'', description:'' },
+        nowOffsetPct: 0,
+        showNowLine: false,
 
         init() {
+            this.updateNowLine();
+            // Update current time line every minute
+            setInterval(() => this.updateNowLine(), 60000);
             // Start polling every 30 seconds
             setInterval(() => this.fetchEvents(), 30000);
+        },
+
+        updateNowLine() {
+            const now = new Date();
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+            const startLimit = 8 * 60;   // 8:00 AM
+            const endLimit   = 18 * 60;  // 6:00 PM
+            const totalMins  = endLimit - startLimit;
+            if (nowMin >= startLimit && nowMin <= endLimit) {
+                this.nowOffsetPct = ((nowMin - startLimit) / totalMins) * 100;
+                this.showNowLine = true;
+            } else {
+                this.showNowLine = false;
+            }
         },
 
         async fetchEvents() {
@@ -299,9 +309,9 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
         },
 
         // ── Helpers ──────────────────────────────────────────────────
-        startMinutes() { return 8 * 60 + 30; },  // 8:30
-        endMinutes()   { return 17 * 60 + 30; }, // 17:30
-        slotHeight()   { return 60; },            // px per 30 min
+        startMinutes() { return 8 * 60; },  // 8:00
+        endMinutes()   { return 18 * 60; }, // 18:00
+        slotHeight()   { return 60; },      // (no longer strictly needed for px calculations)
 
         computeEventLayouts(dayEvents) {
             if (!dayEvents || dayEvents.length === 0) return [];
@@ -389,14 +399,22 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
             const end   = new Date(ev.end_time);
             const startMin = start.getHours() * 60 + start.getMinutes();
             const endMin   = end.getHours()   * 60 + end.getMinutes();
-            const topPx    = (startMin - this.startMinutes()) * (this.slotHeight() / 30);
-            const heightPx = Math.max((endMin - startMin) * (this.slotHeight() / 30), 22);
+            
+            const startLimit = this.startMinutes();
+            const endLimit   = this.endMinutes();
+            const totalMins  = endLimit - startLimit;
+            
+            const offsetMin = Math.max(startMin - startLimit, 0);
+            const duration  = Math.min(endMin - startMin, totalMins - offsetMin);
+            
+            const topPct    = (offsetMin / totalMins) * 100;
+            const heightPct = Math.max((duration / totalMins) * 100, 3.5);
             const color    = ev.color || this.roomColor;
             
             const width = ev.widthPct !== undefined ? `width: calc(${ev.widthPct}% - 6px);` : 'width: calc(100% - 6px);';
             const left = ev.leftPct !== undefined ? `left: calc(${ev.leftPct}% + 3px);` : 'left: 3px;';
             
-            return `top:${topPx}px; height:${heightPx}px; background:${color}22; border-color:${color}; color:${color}; right:auto; ${width} ${left}`;
+            return `top:${topPct}%; height:${heightPct}%; background:${color}22; border-color:${color}; color:${color}; right:auto; ${width} ${left}`;
         },
 
         formatTime(iso) {
@@ -410,10 +428,10 @@ function calendarApp(roomId, roomColor, initialEvents, weekStartStr, weekEndStr)
             this.errorMsg  = '';
             this.isConflict = false;
             const today = dateStr || new Date().toISOString().slice(0,10);
-            const time  = timeStr || '08:30';
+            const time  = timeStr || '08:00';
             const [h, m] = time.split(':').map(Number);
-            const endH = h + (m + 60 >= 60 ? 1 : 0);
-            const endM = (m + 60) % 60;
+            const endH = h + 1;
+            const endM = m;
             this.form = {
                 title:'', organizer:'', date: today,
                 start_time: time,

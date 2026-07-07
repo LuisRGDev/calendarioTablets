@@ -208,7 +208,7 @@ input, textarea, select { font-family: inherit; }
 
 .calendar-header {
   display: grid;
-  grid-template-columns: 56px repeat(7, 1fr);
+  grid-template-columns: 56px repeat(5, 1fr);
   gap: 0;
   border-bottom: 1px solid var(--border);
   margin-bottom: 0;
@@ -255,7 +255,7 @@ input, textarea, select { font-family: inherit; }
 .calendar-body {
   display: flex;
   flex: 1;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
@@ -270,10 +270,15 @@ input, textarea, select { font-family: inherit; }
   left: 0;
   background: var(--bg-surface);
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .time-slot-label {
-  height: 60px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -287,18 +292,24 @@ input, textarea, select { font-family: inherit; }
 
 .days-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   flex: 1;
   min-width: 0;
+  height: 100%;
 }
 
 .day-column {
   border-left: 1px solid var(--border);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .day-slot {
-  height: 60px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   border-top: 1px solid var(--border);
   position: relative;
   cursor: pointer;
@@ -306,10 +317,6 @@ input, textarea, select { font-family: inherit; }
 }
 
 .day-slot:hover { background: rgba(255,255,255,0.03); }
-
-.day-slot.half-hour {
-  border-top: 1px dashed rgba(255,255,255,0.04);
-}
 
 /* ── Event Blocks ────────────────────────────────────────── */
 .event-block {
@@ -600,7 +607,7 @@ input, textarea, select { font-family: inherit; }
 
 .mini-cal-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   border-bottom: 1px solid var(--border);
 }
 
@@ -616,7 +623,7 @@ input, textarea, select { font-family: inherit; }
 
 .mini-cal-body {
   display: flex;
-  overflow-y: auto;
+  overflow-y: hidden;
   flex: 1;
   position: relative;
 }
@@ -625,10 +632,15 @@ input, textarea, select { font-family: inherit; }
   width: 32px;
   flex-shrink: 0;
   border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .mini-time-label {
-  height: 30px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -641,17 +653,23 @@ input, textarea, select { font-family: inherit; }
 
 .mini-days-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   flex: 1;
+  height: 100%;
 }
 
 .mini-day-col {
   border-left: 1px solid var(--border);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .mini-slot {
-  height: 30px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   border-top: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.12s;

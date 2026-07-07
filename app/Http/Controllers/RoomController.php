@@ -15,7 +15,7 @@ class RoomController extends Controller
             ? Carbon::parse($request->query('week'))->startOfWeek(Carbon::MONDAY)
             : Carbon::now()->startOfWeek(Carbon::MONDAY);
 
-        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $weekEnd = $weekStart->copy()->addDays(4)->endOfDay();
 
         // Load events for the week (including recurring ones expanded)
         $baseEvents = $room->events()
@@ -35,7 +35,7 @@ class RoomController extends Controller
         $events = collect(\App\Models\Event::expandRecurringEvents($baseEvents, $weekStart, $weekEnd));
 
         $days = [];
-        for ($i = 0; $i < 7; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             $days[] = $weekStart->copy()->addDays($i);
         }
 
